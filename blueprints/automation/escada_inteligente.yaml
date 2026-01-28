@@ -1,61 +1,72 @@
 blueprint:
   name: Escada Inteligente com WLED (Subir / Descer)
-  description: Escada com trava de direção, liberação segura e timeout
+  description: >
+    Controle de escada com WLED usando dois sensores de presença,
+    trava de direção, liberação segura, timeout e modo dia/noite.
   domain: automation
+
   input:
     sensor_inferior:
       name: Sensor Inferior
       selector:
         entity:
           domain: binary_sensor
+
     sensor_superior:
       name: Sensor Superior
       selector:
         entity:
           domain: binary_sensor
+
     luz_escada:
       name: Luz / WLED
       selector:
         entity:
           domain: light
+
     seletor_efeito:
       name: Seletor de Efeito
       selector:
         entity:
           domain: select
+
     efeito_subir:
       name: Efeito Subindo
       selector:
         text:
+
     efeito_descer:
       name: Efeito Descendo
       selector:
         text:
+
     direcao_helper:
       name: Helper de Direção
+      description: Deve conter: livre, subida, descida
       selector:
         entity:
           domain: input_select
+
     tempo_timeout:
-      name: Timeout (segundos)
+      name: Timeout de segurança (segundos)
       default: 15
       selector:
         number:
           min: 5
           max: 120
           unit_of_measurement: s
+
     modo_funcionamento:
       name: Modo de Funcionamento
-      description: Escolha quando a automação deve funcionar
       default: sempre
       selector:
         select:
           options:
             - label: Sempre ativo
               value: sempre
-            - label: Apenas à noite (após pôr do sol)
+            - label: Apenas à noite
               value: noite
-            - label: Apenas de dia (antes do pôr do sol)
+            - label: Apenas de dia
               value: dia
 
 mode: restart
@@ -69,14 +80,19 @@ trigger:
     entity_id: !input sensor_inferior
     to: "on"
     id: subir
+
   - platform: state
     entity_id: !input sensor_superior
     to: "on"
     id: descer
+
   - platform: state
-    entity_id:
-      - !input sensor_inferior
-      - !input sensor_superior
+    entity_id: !input sensor_inferior
+    to: "off"
+    id: sensores_off
+
+  - platform: state
+    entity_id: !input sensor_superior
     to: "off"
     id: sensores_off
 
@@ -87,15 +103,18 @@ condition:
          or states(direcao) == 'livre'
          or (states(direcao) == 'subida' and trigger.id == 'subir')
          or (states(direcao) == 'descida' and trigger.id == 'descer') }}
+
   - condition: template
     value_template: >
-      {% set sol_abaixo = state_attr('sun.sun', 'elevation') < 0 %}
+      {% set noite = state_attr('sun.sun', 'elevation') < 0 %}
       {{ modo == 'sempre'
-         or (modo == 'noite' and sol_abaixo)
-         or (modo == 'dia' and not sol_abaixo) }}
+         or (modo == 'noite' and noite)
+         or (modo == 'dia' and not noite) }}
 
 action:
   - choose:
+
+      # === SUBIR ===
       - conditions:
           - condition: trigger
             id: subir
@@ -105,23 +124,25 @@ action:
               entity_id: !input direcao_helper
             data:
               option: subida
+
           - service: light.turn_on
             target:
               entity_id: !input luz_escada
+
           - service: select.select_option
             target:
               entity_id: !input seletor_efeito
             data:
               option: !input efeito_subir
-          - wait_for_trigger:
-              - platform: state
-                entity_id:
-                  - !input sensor_inferior
-                  - !input sensor_superior
-                to: "off"
+
+          - wait_template: >
+              {{ is_state(!input sensor_inferior, 'off')
+                 and is_state(!input sensor_superior, 'off') }}
             timeout:
               seconds: !input tempo_timeout
             continue_on_timeout: true
+
+      # === DESCER ===
       - conditions:
           - condition: trigger
             id: descer
@@ -131,30 +152,37 @@ action:
               entity_id: !input direcao_helper
             data:
               option: descida
+
           - service: light.turn_on
             target:
               entity_id: !input luz_escada
+
           - service: select.select_option
             target:
               entity_id: !input seletor_efeito
             data:
               option: !input efeito_descer
-          - wait_for_trigger:
-              - platform: state
-                entity_id:
-                  - !input sensor_inferior
-                  - !input sensor_superior
-                to: "off"
+
+          - wait_template: >
+              {{ is_state(!input sensor_inferior, 'off')
+                 and is_state(!input sensor_superior, 'off') }}
             timeout:
               seconds: !input tempo_timeout
             continue_on_timeout: true
+
+      # === FINALIZAÇÃO SEGURA ===
       - conditions:
           - condition: trigger
             id: sensores_off
+          - condition: template
+            value_template: >
+              {{ is_state(!input sensor_inferior, 'off')
+                 and is_state(!input sensor_superior, 'off') }}
         sequence:
           - service: light.turn_off
             target:
               entity_id: !input luz_escada
+
           - service: input_select.select_option
             target:
               entity_id: !input direcao_helper
