@@ -77,6 +77,9 @@ mode: restart
 variables:
   direcao: !input direcao_helper
   modo: !input modo_funcionamento
+  sensor_inf: !input sensor_inferior
+  sensor_sup: !input sensor_superior
+  timeout_seg: !input tempo_timeout
 
 trigger:
   - platform: state
@@ -139,11 +142,9 @@ action:
             data:
               option: !input efeito_subir
 
-          - wait_template: >
-              {{ is_state(sensor_inferior, 'off')
-                 and is_state(sensor_superior, 'off') }}
+          - wait_template: "{{ is_state(sensor_inf, 'off') and is_state(sensor_sup, 'off') }}"
             timeout:
-              seconds: !input tempo_timeout
+              seconds: "{{ timeout_seg }}"
             continue_on_timeout: true
 
       # ========= DESCER =========
@@ -167,11 +168,9 @@ action:
             data:
               option: !input efeito_descer
 
-          - wait_template: >
-              {{ is_state(sensor_inferior, 'off')
-                 and is_state(sensor_superior, 'off') }}
+          - wait_template: "{{ is_state(sensor_inf, 'off') and is_state(sensor_sup, 'off') }}"
             timeout:
-              seconds: !input tempo_timeout
+              seconds: "{{ timeout_seg }}"
             continue_on_timeout: true
 
       # ========= FINALIZAÇÃO SEGURA =========
@@ -179,9 +178,7 @@ action:
           - condition: trigger
             id: sensores_off
           - condition: template
-            value_template: >
-              {{ is_state(sensor_inferior, 'off')
-                 and is_state(sensor_superior, 'off') }}
+            value_template: "{{ is_state(sensor_inf, 'off') and is_state(sensor_sup, 'off') }}"
         sequence:
           - service: light.turn_off
             target:
