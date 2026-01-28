@@ -2,7 +2,8 @@ blueprint:
   name: Escada Inteligente com WLED (Subir / Descer)
   description: >
     Controle de escada com WLED usando dois sensores de presença,
-    trava de direção, liberação segura, timeout e modo dia/noite.
+    trava de direção, liberação segura, timeout de segurança
+    e modo de funcionamento (sempre / dia / noite).
   domain: automation
 
   input:
@@ -25,24 +26,26 @@ blueprint:
           domain: light
 
     seletor_efeito:
-      name: Seletor de Efeito
+      name: Seletor de Efeito do WLED
       selector:
         entity:
           domain: select
 
     efeito_subir:
-      name: Efeito Subindo
+      name: Nome do efeito de subida
+      description: "Deve ser exatamente o nome do efeito no WLED"
       selector:
         text:
 
     efeito_descer:
-      name: Efeito Descendo
+      name: Nome do efeito de descida
+      description: "Deve ser exatamente o nome do efeito no WLED"
       selector:
         text:
 
     direcao_helper:
       name: Helper de Direção
-      description: Deve conter: livre, subida, descida
+      description: "Input_select com as opções: livre, subida, descida"
       selector:
         entity:
           domain: input_select
@@ -106,7 +109,8 @@ condition:
 
   - condition: template
     value_template: >
-      {% set noite = state_attr('sun.sun', 'elevation') < 0 %}
+      {% set noite = state_attr('sun.sun', 'elevation') is not none
+         and state_attr('sun.sun', 'elevation') < 0 %}
       {{ modo == 'sempre'
          or (modo == 'noite' and noite)
          or (modo == 'dia' and not noite) }}
@@ -114,7 +118,7 @@ condition:
 action:
   - choose:
 
-      # === SUBIR ===
+      # ========= SUBIR =========
       - conditions:
           - condition: trigger
             id: subir
@@ -142,7 +146,7 @@ action:
               seconds: !input tempo_timeout
             continue_on_timeout: true
 
-      # === DESCER ===
+      # ========= DESCER =========
       - conditions:
           - condition: trigger
             id: descer
@@ -170,7 +174,7 @@ action:
               seconds: !input tempo_timeout
             continue_on_timeout: true
 
-      # === FINALIZAÇÃO SEGURA ===
+      # ========= FINALIZAÇÃO SEGURA =========
       - conditions:
           - condition: trigger
             id: sensores_off
