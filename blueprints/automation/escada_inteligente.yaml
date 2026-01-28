@@ -33,19 +33,19 @@ blueprint:
 
     efeito_subir:
       name: Nome do efeito de subida
-      description: "Deve ser exatamente o nome do efeito no WLED"
+      description: Deve ser exatamente o nome do efeito no WLED
       selector:
         text:
 
     efeito_descer:
       name: Nome do efeito de descida
-      description: "Deve ser exatamente o nome do efeito no WLED"
+      description: Deve ser exatamente o nome do efeito no WLED
       selector:
         text:
 
     direcao_helper:
       name: Helper de Direção
-      description: "Input_select com as opções: livre, subida, descida"
+      description: Input_select com as opções - livre, subida, descida
       selector:
         entity:
           domain: input_select
@@ -140,8 +140,8 @@ action:
               option: !input efeito_subir
 
           - wait_template: >
-              {{ is_state(!input sensor_inferior, 'off')
-                 and is_state(!input sensor_superior, 'off') }}
+              {{ is_state(sensor_inferior, 'off')
+                 and is_state(sensor_superior, 'off') }}
             timeout:
               seconds: !input tempo_timeout
             continue_on_timeout: true
@@ -168,8 +168,8 @@ action:
               option: !input efeito_descer
 
           - wait_template: >
-              {{ is_state(!input sensor_inferior, 'off')
-                 and is_state(!input sensor_superior, 'off') }}
+              {{ is_state(sensor_inferior, 'off')
+                 and is_state(sensor_superior, 'off') }}
             timeout:
               seconds: !input tempo_timeout
             continue_on_timeout: true
@@ -180,8 +180,8 @@ action:
             id: sensores_off
           - condition: template
             value_template: >
-              {{ is_state(!input sensor_inferior, 'off')
-                 and is_state(!input sensor_superior, 'off') }}
+              {{ is_state(sensor_inferior, 'off')
+                 and is_state(sensor_superior, 'off') }}
         sequence:
           - service: light.turn_off
             target:
